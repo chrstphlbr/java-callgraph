@@ -41,7 +41,7 @@ import java.util.Stack;
 public class MethodStack {
 
     private static Stack<String> stack = new Stack<>();
-    private static Map<Pair<String, String>, Integer> callgraph = new HashMap<>();
+//    private static Map<Pair<String, String>, Integer> callgraph = new HashMap<>();
     static FileWriter fw; 
     static StringBuffer sb;
     static long threadid = -1L;
@@ -55,17 +55,17 @@ public class MethodStack {
                     e.printStackTrace();
                 }
                 //Sort by number of calls
-                List<Pair<String, String>> keys = new ArrayList<>();
-                keys.addAll(callgraph.keySet());
-                Collections.sort(keys, (o1, o2) -> {
-                    Integer v1 = callgraph.get(o1);
-                    Integer v2 = callgraph.get(o2);
-                    return v1.compareTo(v2);
-                });
-
-                for (Pair<String, String> key : keys) {
-                    System.out.println(key + " " + callgraph.get(key));
-                }
+//                List<Pair<String, String>> keys = new ArrayList<>();
+//                keys.addAll(callgraph.keySet());
+//                Collections.sort(keys, (o1, o2) -> {
+//                    Integer v1 = callgraph.get(o1);
+//                    Integer v2 = callgraph.get(o2);
+//                    return v1.compareTo(v2);
+//                });
+//
+//                for (Pair<String, String> key : keys) {
+//                    System.out.println(key + " " + callgraph.get(key));
+//                }
             }
         });
         File log = new File("calltrace.txt");
@@ -84,13 +84,13 @@ public class MethodStack {
         if (Thread.currentThread().getId() != threadid)
             return;
         
-        if (!stack.isEmpty()) {
-            Pair<String, String> p = new Pair<>(stack.peek(), callname);
-            if (callgraph.containsKey(p))
-                callgraph.put(p, callgraph.get(p) + 1);
-            else
-                callgraph.put(p, 1);
-        }
+//        if (!stack.isEmpty()) {
+//            Pair<String, String> p = new Pair<>(stack.peek(), callname);
+//            if (callgraph.containsKey(p))
+//                callgraph.put(p, callgraph.get(p) + 1);
+//            else
+//                callgraph.put(p, 1);
+//        }
         sb.setLength(0);
         sb.append(">[").append(stack.size()).append("]");
         sb.append("[").append(Thread.currentThread().getId()).append("]");
