@@ -31,16 +31,18 @@ package gr.gousiosg.javacg.dyn;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
 public class MethodStack {
 
+    static String bench = null;
+    private static Map<String, Integer> seen = new HashMap<>();
     private static Stack<String> stack = new Stack<>();
+
+    private static boolean trace = false;
+
 //    private static Map<Pair<String, String>, Integer> callgraph = new HashMap<>();
     static FileWriter fw; 
     static StringBuffer sb;
@@ -91,12 +93,28 @@ public class MethodStack {
 //            else
 //                callgraph.put(p, 1);
 //        }
-        sb.setLength(0);
-        sb.append(">[").append(stack.size()).append("]");
-        sb.append("[").append(Thread.currentThread().getId()).append("]");
-        sb.append(callname).append("=").append(System.nanoTime()).append("\n");
-        fw.write(sb.toString());
+
+
         stack.push(callname);
+
+//        System.out.println("call: " + callname);
+
+        if (isBenchCall(callname)) {
+            trace = true;
+            fw.write("START_" + stack.size() + "\n");
+            return;
+        }
+
+        if (trace && (!seen.containsKey(callname) || seen.get(callname) > stack.size())) {
+            seen.put(callname, stack.size());
+            sb.setLength(0);
+            sb.append(">[").append(stack.size()).append("]");
+            sb.append("[").append(Thread.currentThread().getId()).append("]");
+            sb.append(callname);
+//            sb.append("=").append(System.nanoTime());
+            sb.append("\n");
+            fw.write(sb.toString());
+        }
     }
 
     public static void pop() throws IOException {
@@ -106,11 +124,21 @@ public class MethodStack {
         if (Thread.currentThread().getId() != threadid)
             return;
 
+
         String returnFrom = stack.pop();
-        sb.setLength(0);
-        sb.append("<[").append(stack.size()).append("]");
-        sb.append("[").append(Thread.currentThread().getId()).append("]");
-        sb.append(returnFrom).append("=").append(System.nanoTime()).append("\n");
-        fw.write(sb.toString());
+
+        if (isBenchCall(returnFrom)) {
+            trace = false;
+        }
+
+//        sb.setLength(0);
+//        sb.append("<[").append(stack.size()).append("]");
+//        sb.append("[").append(Thread.currentThread().getId()).append("]");
+//        sb.append(returnFrom).append("=").append(System.nanoTime()).append("\n");
+//        fw.write(sb.toString());
+    }
+
+    private static boolean isBenchCall(String call) {
+        return bench.equals(call.substring(0, call.indexOf("(")));
     }
 }

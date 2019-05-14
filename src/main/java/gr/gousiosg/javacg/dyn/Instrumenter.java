@@ -28,6 +28,9 @@
 
 package gr.gousiosg.javacg.dyn;
 
+import javassist.*;
+import javassist.bytecode.MethodInfo;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
@@ -38,12 +41,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import javassist.CannotCompileException;
-import javassist.ClassPool;
-import javassist.CtBehavior;
-import javassist.CtClass;
-import javassist.NotFoundException;
-
 public class Instrumenter implements ClassFileTransformer {
 
     static List<Pattern> pkgIncl = new ArrayList<>();
@@ -51,7 +48,7 @@ public class Instrumenter implements ClassFileTransformer {
 
     public static void premain(String argument, Instrumentation instrumentation) {
 
-        // incl=com.foo.*,gr.bar.foo;excl=com.bar.foo.*
+        // bench=com.foo.Bench;incl=com.foo.*,gr.bar.foo;excl=com.bar.foo.*
 
         if (argument == null) {
             err("Missing configuration argument");
@@ -67,6 +64,8 @@ public class Instrumenter implements ClassFileTransformer {
             return;
         }
 
+        String bench = null;
+
         for (String token : tokens) {
             String[] args = token.split("=");
             if (args.length < 2) {
@@ -76,7 +75,10 @@ public class Instrumenter implements ClassFileTransformer {
 
             String argtype = args[0];
 
-            if (!argtype.equals("incl") && !argtype.equals("excl")) {
+            if (argtype.equals("bench")) {
+                bench = args[1];
+                continue;
+            } else if (!argtype.equals("incl") && !argtype.equals("excl")) {
                 err("Wrong argument: " + argtype);
                 return;
             }
@@ -87,7 +89,7 @@ public class Instrumenter implements ClassFileTransformer {
                 Pattern p = null;
                 err("Compiling " + argtype + " pattern:" + pattern + "$");
                 try {
-                    p = Pattern.compile(pattern + "$");
+                    p = Pattern.compile("^" + pattern + "$");
                 } catch (PatternSyntaxException pse) {
                     err("pattern: " + pattern + " not valid, ignoring");
                 }
@@ -97,6 +99,12 @@ public class Instrumenter implements ClassFileTransformer {
                     pkgExcl.add(p);
             }
         }
+
+        if (bench == null) {
+            err("No benchmark set");
+            return;
+        }
+        MethodStack.bench = bench;
 
         instrumentation.addTransformer(new Instrumenter());
     }
@@ -147,10 +155,10 @@ public class Instrumenter implements ClassFileTransformer {
                 b = clazz.toBytecode();
             }
         } catch (CannotCompileException e) {
-            e.printStackTrace();
+            e.printStackTrace(System.out);
             err("Cannot compile: " + e.getMessage());
         } catch (NotFoundException e) {
-            e.printStackTrace();
+            e.printStackTrace(System.out);
             err("Cannot find: " + e.getMessage());
         } catch (IOException e) {
             err("Error writing: " + e.getMessage());
@@ -177,16 +185,20 @@ public class Instrumenter implements ClassFileTransformer {
             params.append(p.getName());
         }
 
-        if (method.getName().equals(name))
+        MethodInfo mi = method.getMethodInfo2();
+        if (mi.isConstructor()) {
             methodName = "<init>";
+        } else if (mi.isStaticInitializer()) {
+            methodName = "<clinit>";
+        }
 
         String signature = className + ":" + methodName + "(" + params.toString() + ")";
 
         method.insertBefore("gr.gousiosg.javacg.dyn.MethodStack.push(\"" + signature + "\");");
-        method.insertAfter("gr.gousiosg.javacg.dyn.MethodStack.pop();");
+        method.insertAfter("gr.gousiosg.javacg.dyn.MethodStack.pop();", true);
     }
 
     private static void err(String msg) {
-        //System.err.println("[JAVACG-DYN] " + msg);
+//        System.out.println("[JAVACG-DYN] " + msg);
     }
 }
